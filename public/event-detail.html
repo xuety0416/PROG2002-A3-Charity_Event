@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Detail</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --text-color: #333;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--light-bg);
+        }
+
+        nav {
+            background-color: var(--primary-color);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 2rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: var(--secondary-color);
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .event-detail {
+            background: white;
+            border-radius: 10px;
+            padding: 2.5rem;
+            box-shadow: var(--card-shadow);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            font-size: 2.5rem;
+            line-height: 1.3;
+        }
+
+        .event-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-item {
+            padding: 1rem;
+            background: var(--light-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .info-item strong {
+            display: block;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-item p {
+            color: var(--text-color);
+            font-size: 1.1rem;
+        }
+
+        .progress-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--light-bg);
+            border-radius: 8px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.8rem;
+        }
+
+        .progress-bar {
+            height: 25px;
+            background: #e0e0e0;
+            border-radius: 12.5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary-color), var(--accent-color));
+            border-radius: 12.5px;
+            transition: width 0.5s ease;
+        }
+
+        .description-section {
+            margin: 2rem 0;
+        }
+
+        h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .description-section p {
+            color: var(--text-color);
+            line-height: 1.8;
+            white-space: pre-line;
+        }
+
+        #registerBtn {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 1rem 2.5rem;
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        #registerBtn:hover {
+            background-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        #registerBtn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 0 1rem;
+                margin: 1rem auto;
+            }
+
+            .event-detail {
+                padding: 1.5rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .event-info {
+                grid-template-columns: 1fr;
+            }
+
+            #registerBtn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="search.html">Search Events</a>
+    </nav>
+    <main id="detailContainer"></main>
+    <script>
+    async function loadDetail(){
+        const params = new URLSearchParams(window.location.search);
+        const eventId = params.get("id");
+        const res = await fetch(`/api/events/${eventId}`);
+        const result = await res.json();
+        const container = document.getElementById("detailContainer");
+        if(!result.success){
+            container.innerHTML = "<p>Cannot load event details.</p>";
+            return;
+        }
+        const evt = result.data;
+        const progressPercent = Math.min((evt.current_progress / evt.fundraising_goal) * 100, 100);
+        
+        container.innerHTML=`
+            <div class="event-detail">
+                <h1>${evt.event_title}</h1>
+                <div class="event-info">
+                    <div class="info-item">
+                        <strong>Category</strong>
+                        <p>${evt.category_name}</p>
+                    </div>
+                    <div class="info-item">
+                        <strong>Date</strong>
+                        <p>${new Date(evt.event_date).toLocaleString()}</p>
+                    </div>
+                    <div class="info-item">
+                        <strong>Location</strong>
+                        <p>${evt.location}</p>
+                    </div>
+                    <div class="info-item">
+                        <strong>Ticket Price</strong>
+                        <p>$${evt.ticket_price}</p>
+                    </div>
+                </div>
+                <div class="progress-section">
+                    <div class="progress-info">
+                        <div>
+                            <strong>Current Progress</strong>
+                            <p>$${evt.current_progress}</p>
+                        </div>
+                        <div>
+                            <strong>Fundraising Goal</strong>
+                            <p>$${evt.fundraising_goal}</p>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progressPercent}%"></div>
+                    </div>
+                </div>
+                <div class="description-section">
+                    <h3>Description</h3>
+                    <p>${evt.event_description}</p>
+                </div>
+                <button id="registerBtn">Register</button>
+            </div>
+        `;
+        document.getElementById("registerBtn").onclick = ()=>{
+            alert("This feature is currently under construction.");
+        }
+    }
+    loadDetail();
+    </script>
+</body>
+</html>
