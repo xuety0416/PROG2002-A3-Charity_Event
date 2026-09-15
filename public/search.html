@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Charity Events</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-bg: #f8f9fa;
+            --text-color: #333;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--light-bg);
+        }
+
+        nav {
+            background-color: var(--primary-color);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 2rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        nav a:hover {
+            color: var(--secondary-color);
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+            text-align: center;
+            font-size: 2.5rem;
+        }
+
+        #searchForm {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        select, input[type="text"], input[type="date"] {
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+
+        button {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        button[type="submit"] {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+
+        button[type="submit"]:hover {
+            background-color: var(--primary-color);
+        }
+
+        #clearBtn {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        #clearBtn:hover {
+            background-color: #7f8c8d;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #searchResult {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .event-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .event-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .event-card h3 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .event-card p {
+            margin-bottom: 0.8rem;
+            color: #666;
+        }
+
+        .event-card a {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.6rem 1.2rem;
+            background-color: var(--secondary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .event-card a:hover {
+            background-color: var(--primary-color);
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            #searchForm {
+                grid-template-columns: 1fr;
+            }
+
+            #searchResult {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="search.html">Search Events</a>
+    </nav>
+    <main>
+        <h1>Search Events</h1>
+        <form id="searchForm">
+            <div class="form-group">
+                <label>Category:</label>
+                <select id="categorySelect">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Location:</label>
+                <input type="text" id="locationInput">
+            </div>
+            <div class="form-group">
+                <label>Date:</label>
+                <input type="date" id="dateInput">
+            </div>
+            <div class="form-group">
+                <button type="submit">Search</button>
+                <button type="button" id="clearBtn">Clear Filters</button>
+            </div>
+        </form>
+        <div id="searchResult"></div>
+    </main>
+    <script>
+    // 加载分类下拉
+    async function loadCategories(){
+        const res = await fetch("/api/categories");
+        const result = await res.json();
+        const sel = document.getElementById("categorySelect");
+        result.data.forEach(cat=>{
+            const opt = document.createElement("option");
+            opt.value = cat.category_id;
+            opt.textContent = cat.category_name;
+            sel.appendChild(opt);
+        })
+    }
+
+    // 搜索
+    document.getElementById("searchForm").addEventListener("submit", async (e)=>{
+        e.preventDefault();
+        const catId = document.getElementById("categorySelect").value;
+        const loc = document.getElementById("locationInput").value;
+        const dt = document.getElementById("dateInput").value;
+        let url = `/api/events/search?categoryId=${catId}&location=${loc}&date=${dt}`;
+        const res = await fetch(url);
+        const result = await res.json();
+        const box = document.getElementById("searchResult");
+        if(result.data.length ===0){
+            box.innerHTML = "<p>No matching events found.</p>";
+            return;
+        }
+        box.innerHTML = "";
+        result.data.forEach(evt=>{
+            const div = document.createElement("div");
+            div.className="event-card";
+            div.innerHTML=`
+                <h3>${evt.event_title}</h3>
+                <p>${evt.category_name} | ${evt.location} | ${new Date(evt.event_date).toLocaleString()}</p>
+                <a href="event-detail.html?id=${evt.event_id}">View Detail</a>
+            `;
+            box.appendChild(div);
+        })
+    });
+
+    // 清除筛选
+    document.getElementById("clearBtn").onclick = ()=>{
+        document.getElementById("searchForm").reset();
+        document.getElementById("searchResult").innerHTML = "";
+    };
+
+    loadCategories();
+    </script>
+</body>
+</html>
