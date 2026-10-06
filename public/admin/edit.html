@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Event | Admin</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <nav>
+        <a class="brand" href="index.html">Charity Admin</a>
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link" href="new.html">New Event</a>
+        <a class="nav-link active" href="edit.html">Update Event</a>
+        <a class="nav-link nav-right" href="../index.html">Client Site</a>
+        <span class="nav-badge">Admin</span>
+    </nav>
+
+    <main>
+        <h1 class="page-title">Update an existing event</h1>
+        <p class="page-subtitle">Select an event, edit its details and save. The associated registrations are shown below the form.</p>
+
+        <div id="pageAlert" class="alert hidden"></div>
+
+        <!-- Quick event selector -->
+        <div class="card" style="margin-bottom:1.6rem;">
+            <div class="form-group">
+                <label for="eventPicker">Select an event to update</label>
+                <select id="eventPicker"></select>
+            </div>
+        </div>
+
+        <form id="eventForm" class="card hidden">
+            <fieldset>
+                <legend>Event details</legend>
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label for="eventTitle">Event title <span class="req">*</span></label>
+                        <input type="text" id="eventTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="organisationId">Organisation <span class="req">*</span></label>
+                        <select id="organisationId" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="categoryId">Category <span class="req">*</span></label>
+                        <select id="categoryId" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventDate">Event date &amp; time <span class="req">*</span></label>
+                        <input type="datetime-local" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Location <span class="req">*</span></label>
+                        <input type="text" id="location" required>
+                    </div>
+                    <div class="form-group full">
+                        <label for="eventDescription">Description</label>
+                        <textarea id="eventDescription"></textarea>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset>
+                <legend>Financials &amp; status</legend>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="ticketPrice">Ticket price ($)</label>
+                        <input type="number" id="ticketPrice" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="fundraisingGoal">Fundraising goal ($)</label>
+                        <input type="number" id="fundraisingGoal" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="currentProgress">Current progress ($)</label>
+                        <input type="number" id="currentProgress" min="0" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label for="latitude">Latitude</label>
+                        <input type="number" id="latitude" step="0.000001">
+                    </div>
+                    <div class="form-group">
+                        <label for="longitude">Longitude</label>
+                        <input type="number" id="longitude" step="0.000001">
+                    </div>
+                    <div class="form-group">
+                        <label for="isSuspended">Suspended</label>
+                        <label style="font-weight:400;">
+                            <input type="checkbox" id="isSuspended" style="width:auto;"> Tick to suspend this event
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <div class="btn-row">
+                <button type="submit" id="submitBtn" class="btn btn-primary">Save changes</button>
+                <a class="btn btn-secondary" href="index.html">Cancel</a>
+                <button type="button" id="deleteBtn" class="btn btn-danger">Delete this event</button>
+            </div>
+        </form>
+
+        <!-- Associated registrations for the selected event -->
+        <section id="registrationSection" class="hidden" style="margin-top:2.5rem;">
+            <h2>Registrations for this event</h2>
+            <div id="registrationTable"></div>
+        </section>
+    </main>
+
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (Admin)</footer>
+
+    <script src="../js/api.js"></script>
+    <script>
+        /**
+         * Admin "Update" feature.
+         *   GET /api/events/:id  -> pre-fill the form and show the registrations.
+         *   PUT /api/events/:id  -> save the changes.
+         *   DELETE /api/events/:id -> optional delete (blocked if registered).
+         */
+        let selectedEventId = getQueryParam('id');
+        let organisations = [];
+        let categories = [];
+
+        function showAlert(message, type = 'error') {
+            const box = document.getElementById('pageAlert');
+            box.className = 'alert alert-' + type;
+            box.textContent = message;
+            box.classList.toggle('hidden', !message);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Convert a database datetime into the value format required by
+        // <input type="datetime-local"> (YYYY-MM-DDTHH:mm).
+        function toInputDateTime(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            return d.toISOString().slice(0, 16);
+        }
+
+        async function loadOptions() {
+            const [orgs, cats] = await Promise.all([apiGet('/api/organisations'), apiGet('/api/categories')]);
+            organisations = orgs.data;
+            categories = cats.data;
+            document.getElementById('organisationId').innerHTML = organisations
+                .map(o => `<option value="${o.organisation_id}">${escapeHtml(o.organisation_name)}</option>`).join('');
+            document.getElementById('categoryId').innerHTML = categories
+                .map(c => `<option value="${c.category_id}">${escapeHtml(c.category_name)}</option>`).join('');
+        }
+
+        async function loadEventPicker() {
+            const result = await apiGet('/api/admin/events');
+            const picker = document.getElementById('eventPicker');
+            picker.innerHTML = '<option value="">-- choose an event --</option>' + result.data
+                .map(e => `<option value="${e.event_id}">#${e.event_id} - ${escapeHtml(e.event_title)} (${e.event_status})</option>`)
+                .join('');
+            if (selectedEventId) picker.value = selectedEventId;
+        }
+
+        async function loadEvent(eventId) {
+            if (!eventId) return;
+            try {
+                const result = await apiGet(`/api/events/${eventId}`);
+                const evt = result.data;
+                selectedEventId = evt.event_id;
+
+                document.getElementById('eventForm').classList.remove('hidden');
+                document.getElementById('eventTitle').value = evt.event_title || '';
+                document.getElementById('organisationId').value = evt.organisation_id;
+                document.getElementById('categoryId').value = evt.category_id;
+                document.getElementById('eventDate').value = toInputDateTime(evt.event_date);
+                document.getElementById('location').value = evt.location || '';
+                document.getElementById('eventDescription').value = evt.event_description || '';
+                document.getElementById('ticketPrice').value = evt.ticket_price;
+                document.getElementById('fundraisingGoal').value = evt.fundraising_goal;
+                document.getElementById('currentProgress').value = evt.current_progress;
+                document.getElementById('latitude').value = evt.latitude ?? '';
+                document.getElementById('longitude').value = evt.longitude ?? '';
+                document.getElementById('isSuspended').checked = !!evt.is_suspended;
+
+                renderRegistrations(evt.registrations);
+                showAlert('');
+            } catch (err) {
+                showAlert('Could not load the event: ' + err.message);
+            }
+        }
+
+        function renderRegistrations(registrations) {
+            const section = document.getElementById('registrationSection');
+            const container = document.getElementById('registrationTable');
+            section.classList.remove('hidden');
+
+            if (!registrations || registrations.length === 0) {
+                container.innerHTML = '<div class="empty-state">This event has no registrations yet, so it can still be deleted.</div>';
+                return;
+            }
+            const rows = registrations.map(r => `
+                <tr>
+                    <td>#${r.registration_id}</td>
+                    <td>${escapeHtml(r.attendee_name)}</td>
+                    <td>${escapeHtml(r.attendee_email)}</td>
+                    <td>${escapeHtml(r.contact_phone)}</td>
+                    <td>${r.tickets_purchased}</td>
+                    <td>${formatCurrency(r.total_amount)}</td>
+                    <td>${formatDateTime(r.registration_date)}</td>
+                    <td>${escapeHtml(r.registration_status)}</td>
+                </tr>`).join('');
+            container.innerHTML = `
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th>
+                            <th>Tickets</th><th>Total</th><th>Registered</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+                <p class="form-hint">${registrations.length} registration(s) - the deletion of this event is blocked while registrations exist.</p>`;
+        }
+
+        function collectForm() {
+            return {
+                organisation_id: Number(document.getElementById('organisationId').value),
+                category_id: Number(document.getElementById('categoryId').value),
+                event_title: document.getElementById('eventTitle').value.trim(),
+                event_description: document.getElementById('eventDescription').value.trim(),
+                event_date: document.getElementById('eventDate').value,
+                location: document.getElementById('location').value.trim(),
+                latitude: document.getElementById('latitude').value || null,
+                longitude: document.getElementById('longitude').value || null,
+                ticket_price: Number(document.getElementById('ticketPrice').value || 0),
+                fundraising_goal: Number(document.getElementById('fundraisingGoal').value || 0),
+                current_progress: Number(document.getElementById('currentProgress').value || 0),
+                is_suspended: document.getElementById('isSuspended').checked
+            };
+        }
+
+        function validate(data) {
+            if (!data.event_title) return 'The event title is required.';
+            if (!data.event_date || Number.isNaN(Date.parse(data.event_date))) return 'Please provide a valid event date.';
+            if (!data.location) return 'The location is required.';
+            if (!data.category_id) return 'Please choose a category.';
+            if (!data.organisation_id) return 'Please choose an organisation.';
+            return null;
+        }
+
+        document.getElementById('eventPicker').addEventListener('change', (e) => {
+            selectedEventId = e.target.value;
+            if (selectedEventId) loadEvent(selectedEventId);
+        });
+
+        document.getElementById('eventForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showAlert('');
+            const data = collectForm();
+            const error = validate(data);
+            if (error) { showAlert(error); return; }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving…';
+            try {
+                const result = await apiPut(`/api/events/${selectedEventId}`, data);
+                showAlert(result.message || 'Event updated successfully.', 'success');
+            } catch (err) {
+                showAlert('Could not update the event: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save changes';
+            }
+        });
+
+        document.getElementById('deleteBtn').addEventListener('click', async () => {
+            if (!selectedEventId) { showAlert('Please select an event first.'); return; }
+            if (!confirm('Delete this event? Events with registrations cannot be deleted.')) return;
+            try {
+                const result = await apiDelete(`/api/events/${selectedEventId}`);
+                showAlert(result.message || 'Event deleted.', 'success');
+                setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+            } catch (err) {
+                showAlert('Deletion blocked: ' + err.message, 'error');
+            }
+        });
+
+        // Initial load.
+        (async () => {
+            try {
+                await loadOptions();
+                await loadEventPicker();
+                if (selectedEventId) {
+                    await loadEvent(selectedEventId);
+                } else {
+                    showAlert('Choose an event from the list above to start editing.', 'info');
+                }
+            } catch (err) {
+                showAlert('Could not initialise the page: ' + err.message);
+            }
+        })();
+    </script>
+</body>
+</html>
