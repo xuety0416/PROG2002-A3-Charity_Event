@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="charityApp">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Charity Events | Home</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body ng-cloak ng-controller="HomeController as vm">
     <!-- Navigation is shared by every page of the website -->
     <nav>
         <a class="brand" href="index.html">City Community Charity</a>
         <a class="nav-link active" href="index.html">Home</a>
         <a class="nav-link" href="search.html">Search Events</a>
         <a class="nav-link nav-right" href="admin/index.html">Admin</a>
-        <span class="nav-badge">A3</span>
+        <span class="nav-badge">AngularJS</span>
     </nav>
 
     <main>
@@ -25,50 +25,28 @@
 
         <section>
             <h2>Upcoming Charity Events</h2>
-            <div id="eventList" class="card-grid"></div>
-            <div id="loadError" class="alert alert-error hidden"></div>
+
+            <div class="alert alert-error" ng-if="vm.error">{{ vm.error }}</div>
+            <div class="spinner" ng-if="vm.loading">Loading events&hellip;</div>
+
+            <!-- One <event-card> directive per event. The weather chip is filled
+                 in asynchronously from GET /api/weather/upcoming. -->
+            <div class="card-grid" ng-if="!vm.loading && vm.events.length">
+                <event-card ng-repeat="evt in vm.events track by evt.event_id"
+                            event="evt"
+                            weather="vm.weatherByEvent[evt.event_id]"></event-card>
+            </div>
+
+            <div class="empty-state" ng-if="!vm.loading && !vm.events.length && !vm.error">
+                There are no upcoming events at the moment.
+            </div>
         </section>
     </main>
 
-    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3</footer>
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (AngularJS)</footer>
 
-    <!-- Shared API helper -->
-    <script src="js/api.js"></script>
-    <script>
-        /**
-         * Home page: load the upcoming (active and future) events from
-         * GET /api/events/upcoming and render them as cards.
-         */
-        async function loadUpcomingEvents() {
-            const container = document.getElementById('eventList');
-            const errorBox = document.getElementById('loadError');
-            try {
-                const result = await apiGet('/api/events/upcoming');
-
-                if (!result.data.length) {
-                    container.innerHTML = '<div class="empty-state">There are no upcoming events at the moment.</div>';
-                    return;
-                }
-
-                container.innerHTML = result.data.map(evt => `
-                    <div class="event-card">
-                        <h3>${escapeHtml(evt.event_title)}</h3>
-                        <p><span class="badge badge-category">${escapeHtml(evt.category_name)}</span></p>
-                        <p><strong>Date:</strong> ${formatDateTime(evt.event_date)}</p>
-                        <p><strong>Location:</strong> ${escapeHtml(evt.location)}</p>
-                        <p><strong>Tickets:</strong> ${Number(evt.ticket_price) > 0 ? formatCurrency(evt.ticket_price) + ' each' : 'Free entry'}</p>
-                        <div class="card-actions">
-                            <a class="btn btn-primary" href="event-detail.html?id=${evt.event_id}">View Details</a>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                errorBox.textContent = 'Failed to load events: ' + err.message;
-                errorBox.classList.remove('hidden');
-            }
-        }
-
-        loadUpcomingEvents();
-    </script>
+    <!-- AngularJS framework, vendored locally so the site also works offline -->
+    <script src="js/vendor/angular.min.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

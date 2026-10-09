@@ -1,49 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="charityApp">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Registration</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body ng-cloak ng-controller="RegisterController as vm">
     <nav>
         <a class="brand" href="index.html">City Community Charity</a>
         <a class="nav-link" href="index.html">Home</a>
         <a class="nav-link" href="search.html">Search Events</a>
         <a class="nav-link nav-right" href="admin/index.html">Admin</a>
-        <span class="nav-badge">A3</span>
+        <span class="nav-badge">AngularJS</span>
     </nav>
 
     <main>
         <h1 class="page-title">Register for an Event</h1>
         <p class="page-subtitle">Complete the form below to reserve your ticket(s).</p>
 
-        <!-- Confirmation / error feedback -->
-        <div id="pageAlert" class="alert hidden"></div>
+        <div class="alert alert-success" ng-if="vm.successMessage">{{ vm.successMessage }}</div>
+        <div class="alert alert-error" ng-if="vm.error">{{ vm.error }}</div>
 
-        <!-- Event summary, filled by GET /api/events/:id -->
-        <div id="eventSummary" class="card" style="margin-bottom:1.6rem;">
-            <div class="empty-state">Loading event information&hellip;</div>
+        <div class="spinner" ng-if="vm.loading">Loading event information&hellip;</div>
+
+        <!-- Event summary loaded from GET /api/events/:id -->
+        <div class="card" style="margin-bottom:1.6rem;" ng-if="vm.event">
+            <h2 style="color:var(--primary);margin-bottom:1rem;">You are registering for</h2>
+            <div class="info-grid">
+                <div class="info-item"><strong>Event</strong><p>{{ vm.event.event_title }}</p></div>
+                <div class="info-item"><strong>Category</strong><p>{{ vm.event.category_name }}</p></div>
+                <div class="info-item"><strong>Date</strong><p>{{ vm.event.event_date | auDate }}</p></div>
+                <div class="info-item"><strong>Location</strong><p>{{ vm.event.location }}</p></div>
+                <div class="info-item">
+                    <strong>Ticket price</strong>
+                    <p ng-if="vm.event.ticket_price > 0">{{ vm.event.ticket_price | auCurrency }}</p>
+                    <p ng-if="vm.event.ticket_price <= 0">Free entry</p>
+                </div>
+            </div>
         </div>
 
-        <!-- Registration form -->
-        <form id="registerForm" class="card hidden">
+        <!-- AngularJS validated registration form -->
+        <form name="registerForm" class="card" ng-submit="vm.submit(registerForm)" novalidate
+              ng-if="vm.registrationOpen">
             <fieldset>
                 <legend>Attendee details</legend>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="attendeeName">Full name <span class="req">*</span></label>
-                        <input type="text" id="attendeeName" placeholder="e.g. Jane Citizen" required>
+                        <input type="text" id="attendeeName" name="attendeeName"
+                               ng-model="vm.form.attendee_name" placeholder="e.g. Jane Citizen"
+                               required minlength="2">
+                        <span class="field-error"
+                              ng-show="registerForm.attendeeName.$touched && registerForm.attendeeName.$invalid">
+                            Please enter the attendee full name (at least 2 characters).
+                        </span>
                     </div>
                     <div class="form-group">
                         <label for="attendeeEmail">Email address <span class="req">*</span></label>
-                        <input type="email" id="attendeeEmail" placeholder="e.g. jane@example.com" required>
+                        <input type="email" id="attendeeEmail" name="attendeeEmail"
+                               ng-model="vm.form.attendee_email" placeholder="e.g. jane@example.com" required>
                         <span class="form-hint">You can only register once per event with the same email.</span>
+                        <span class="field-error"
+                              ng-show="registerForm.attendeeEmail.$touched && registerForm.attendeeEmail.$invalid">
+                            Please enter a valid email address.
+                        </span>
                     </div>
                     <div class="form-group">
                         <label for="contactPhone">Contact phone <span class="req">*</span></label>
-                        <input type="tel" id="contactPhone" placeholder="e.g. 0412 345 678" required>
+                        <input type="tel" id="contactPhone" name="contactPhone"
+                               ng-model="vm.form.contact_phone" placeholder="e.g. 0412 345 678"
+                               required ng-pattern="/^[0-9 +()\-]{6,}$/">
+                        <span class="field-error"
+                              ng-show="registerForm.contactPhone.$touched && registerForm.contactPhone.$invalid">
+                            Please enter a valid contact phone number.
+                        </span>
                     </div>
                 </div>
             </fieldset>
@@ -53,163 +84,38 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="ticketsPurchased">Number of tickets <span class="req">*</span></label>
-                        <input type="number" id="ticketsPurchased" min="1" max="10" value="1" required>
+                        <input type="number" id="ticketsPurchased" name="ticketsPurchased"
+                               ng-model="vm.form.tickets_purchased" min="1" max="10" required>
                         <span class="form-hint">Between 1 and 10 tickets per registration.</span>
+                        <span class="field-error"
+                              ng-show="registerForm.ticketsPurchased.$touched && registerForm.ticketsPurchased.$invalid">
+                            The number of tickets must be between 1 and 10.
+                        </span>
                     </div>
                     <div class="form-group">
                         <label for="registrationDate">Date of registration <span class="req">*</span></label>
-                        <input type="datetime-local" id="registrationDate" required>
+                        <input type="datetime-local" id="registrationDate" name="registrationDate"
+                               ng-model="vm.form.registration_date" required>
                     </div>
                     <div class="form-group">
                         <label>Total amount</label>
-                        <input type="text" id="totalAmount" value="$0.00" readonly>
+                        <input type="text" value="{{ vm.totalAmount() | auCurrency }}" readonly>
                     </div>
                 </div>
             </fieldset>
 
             <div class="btn-row">
-                <button type="submit" id="submitBtn" class="btn btn-primary btn-lg">Finalise registration</button>
-                <a class="btn btn-outline" id="cancelLink" href="index.html">Cancel</a>
+                <button type="submit" class="btn btn-primary btn-lg" ng-disabled="vm.submitting">
+                    {{ vm.submitting ? 'Submitting…' : 'Finalise registration' }}
+                </button>
+                <a class="btn btn-outline" ng-href="event-detail.html?id={{ vm.eventId }}">Cancel</a>
             </div>
         </form>
     </main>
 
-    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3</footer>
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (AngularJS)</footer>
 
-    <script src="js/api.js"></script>
-    <script>
-        /**
-         * Registration page (new in A3).
-         *   1. Read the event id from the query string (?id=...).
-         *   2. GET /api/events/:id  -> show the event the user is registering for.
-         *   3. On submit, validate the input and POST to
-         *      /api/events/:id/registrations.
-         *   4. Show a confirmation message and navigate back to the event page.
-         */
-        const eventId = getQueryParam('id');
-        let currentEvent = null;
-
-        function showAlert(message, type = 'error') {
-            const box = document.getElementById('pageAlert');
-            box.className = 'alert alert-' + type;
-            box.innerHTML = message;
-            box.classList.toggle('hidden', !message);
-            box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        // Local datetime string for the default registration date.
-        function nowLocalInputValue() {
-            const d = new Date();
-            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-            return d.toISOString().slice(0, 16);
-        }
-
-        async function loadEvent() {
-            const summary = document.getElementById('eventSummary');
-            if (!eventId || Number.isNaN(Number(eventId))) {
-                summary.innerHTML = '<div class="alert alert-error">No valid event id was supplied.</div>';
-                return;
-            }
-            try {
-                const result = await apiGet(`/api/events/${eventId}`);
-                currentEvent = result.data;
-
-                summary.innerHTML = `
-                    <h2 style="color:var(--primary);margin-bottom:1rem;">You are registering for</h2>
-                    <div class="info-grid">
-                        <div class="info-item"><strong>Event</strong><p>${escapeHtml(currentEvent.event_title)}</p></div>
-                        <div class="info-item"><strong>Category</strong><p>${escapeHtml(currentEvent.category_name)}</p></div>
-                        <div class="info-item"><strong>Date</strong><p>${formatDateTime(currentEvent.event_date)}</p></div>
-                        <div class="info-item"><strong>Location</strong><p>${escapeHtml(currentEvent.location)}</p></div>
-                        <div class="info-item"><strong>Ticket price</strong><p>${Number(currentEvent.ticket_price) > 0 ? formatCurrency(currentEvent.ticket_price) : 'Free entry'}</p></div>
-                    </div>`;
-
-                if (currentEvent.event_status === 'Suspended') {
-                    showAlert('This event has been suspended and can no longer be registered for.', 'warning');
-                    return; // do not show the form
-                }
-                if (currentEvent.event_status === 'Past') {
-                    showAlert('This event has already taken place.', 'warning');
-                    return;
-                }
-
-                document.getElementById('registerForm').classList.remove('hidden');
-                document.getElementById('cancelLink').href = `event-detail.html?id=${eventId}`;
-                updateTotal();
-            } catch (err) {
-                summary.innerHTML = `<div class="alert alert-error">Cannot load event: ${escapeHtml(err.message)}</div>`;
-            }
-        }
-
-        /** Recalculate the displayed total whenever the ticket count changes. */
-        function updateTotal() {
-            const tickets = Number(document.getElementById('ticketsPurchased').value) || 0;
-            const price = currentEvent ? Number(currentEvent.ticket_price) || 0 : 0;
-            document.getElementById('totalAmount').value = formatCurrency(tickets * price);
-        }
-
-        /**
-         * Client-side validation. Returns an error message or null.
-         */
-        function validateForm(data) {
-            if (!data.attendee_name || data.attendee_name.length < 2) return 'Please enter the attendee full name.';
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.attendee_email)) return 'Please enter a valid email address.';
-            if (!data.contact_phone || data.contact_phone.replace(/\D/g, '').length < 6) return 'Please enter a valid contact phone number.';
-            if (!Number.isInteger(data.tickets_purchased) || data.tickets_purchased < 1 || data.tickets_purchased > 10) {
-                return 'The number of tickets must be between 1 and 10.';
-            }
-            if (!data.registration_date || Number.isNaN(Date.parse(data.registration_date))) {
-                return 'Please provide a valid registration date.';
-            }
-            return null;
-        }
-
-        document.getElementById('registerForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showAlert('');
-
-            const data = {
-                attendee_name: document.getElementById('attendeeName').value.trim(),
-                attendee_email: document.getElementById('attendeeEmail').value.trim(),
-                contact_phone: document.getElementById('contactPhone').value.trim(),
-                tickets_purchased: Number(document.getElementById('ticketsPurchased').value),
-                registration_date: document.getElementById('registrationDate').value
-            };
-
-            // 1. client-side validation (the brief requires a client-side alert)
-            const validationError = validateForm(data);
-            if (validationError) {
-                showAlert(validationError);
-                return;
-            }
-
-            // 2. call the API
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting…';
-            try {
-                const result = await apiPost(`/api/events/${eventId}/registrations`, data);
-
-                // 3. confirmation + navigation
-                showAlert(
-                    `&#10004; Registration confirmed! Your registration id is <strong>#${result.data.registration_id}</strong> `
-                    + `for ${result.data.tickets_purchased} ticket(s), total ${formatCurrency(result.data.total_amount)}. `
-                    + `Redirecting to the event page…`,
-                    'success'
-                );
-                document.getElementById('registerForm').reset();
-                setTimeout(() => { window.location.href = `event-detail.html?id=${eventId}`; }, 2200);
-            } catch (err) {
-                showAlert('Registration failed: ' + escapeHtml(err.message));
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Finalise registration';
-            }
-        });
-
-        document.getElementById('ticketsPurchased').addEventListener('input', updateTotal);
-        document.getElementById('registrationDate').value = nowLocalInputValue();
-
-        loadEvent();
-    </script>
+    <script src="js/vendor/angular.min.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

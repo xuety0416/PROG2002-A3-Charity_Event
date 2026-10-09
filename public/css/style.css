@@ -339,6 +339,105 @@ footer {
 }
 
 /* ------------------------------ Responsive ------------------------------ */
+/* ==========================================================================
+   AngularJS components
+   ========================================================================== */
+
+/* Hide un-compiled templates until AngularJS has bootstrapped the page. */
+[ng-cloak] { display: none !important; }
+
+.spinner {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+.spinner::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 28px;
+  margin: 0.8rem auto 0;
+  border: 3px solid var(--border);
+  border-top-color: var(--secondary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Inline validation message rendered by AngularJS forms. */
+.field-error {
+  display: block;
+  color: var(--accent);
+  font-size: 0.82rem;
+  margin-top: 0.3rem;
+}
+
+.preserve-lines { white-space: pre-line; }
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.section-head h2 { margin: 0; }
+
+/* Compact weather chip shown on the event cards (from /api/weather/upcoming). */
+.weather-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #eaf4fd;
+  border: 1px solid #cfe4f7;
+  color: var(--secondary-dark);
+  border-radius: 20px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  margin: 0.2rem 0 0.6rem;
+}
+.weather-chip-icon { font-size: 1.05rem; }
+
+/* Event day weather details. */
+.weather-meta { color: var(--primary); font-size: 0.92rem; margin-top: 0.2rem; }
+.weather-advice {
+  margin-top: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: #fff8e6;
+  border-left: 3px solid var(--warning);
+  border-radius: 6px;
+  font-size: 0.92rem;
+  color: #7a5a10;
+}
+
+/* Multi-day outlook cards. */
+.outlook { margin: 1.4rem 0; }
+.outlook-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.9rem;
+}
+.outlook-day {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.outlook-date {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.outlook-icon { font-size: 1.8rem; margin: 0.3rem 0; }
+.outlook-temp { font-weight: 600; color: var(--primary); }
+.outlook-rain { font-size: 0.8rem; color: var(--secondary-dark); }
+
+/* ------------------------------ Responsive ------------------------------ */
 @media (max-width: 768px) {
   nav { padding: 0 1rem; }
   nav .brand { margin-right: 1.2rem; font-size: 1rem; }
@@ -348,4 +447,6 @@ footer {
   .page-title { font-size: 1.7rem; }
   .card-grid { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
+  .section-head { flex-direction: column; align-items: flex-start; }
+  .outlook-row { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
 }

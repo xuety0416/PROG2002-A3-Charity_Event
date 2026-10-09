@@ -1,171 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="charityApp">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Charity Events</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body ng-cloak ng-controller="SearchController as vm">
     <nav>
         <a class="brand" href="index.html">City Community Charity</a>
         <a class="nav-link" href="index.html">Home</a>
         <a class="nav-link active" href="search.html">Search Events</a>
         <a class="nav-link nav-right" href="admin/index.html">Admin</a>
-        <span class="nav-badge">A3</span>
+        <span class="nav-badge">AngularJS</span>
     </nav>
 
     <main>
         <h1 class="page-title">Search Events</h1>
         <p class="page-subtitle">Filter the charity events by category, location, date or keyword.</p>
 
-        <!-- Search filter. Every filter is optional and combined with AND. -->
-        <form id="searchForm" class="card">
+        <!-- Every field is bound with ng-model and the search is triggered by
+             ng-submit, so the controller never touches the DOM directly. -->
+        <form name="searchForm" class="card" ng-submit="vm.search()" novalidate>
             <div class="form-grid">
                 <div class="form-group">
                     <label for="categorySelect">Category</label>
-                    <select id="categorySelect">
+                    <select id="categorySelect" ng-model="vm.filters.categoryId"
+                            ng-options="c.category_id as c.category_name for c in vm.categories">
                         <option value="">All Categories</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="locationInput">Location</label>
-                    <input type="text" id="locationInput" placeholder="e.g. Town Hall">
+                    <input type="text" id="locationInput" placeholder="e.g. Town Hall"
+                           ng-model="vm.filters.location" minlength="2">
                 </div>
                 <div class="form-group">
                     <label for="dateInput">Date</label>
-                    <input type="date" id="dateInput">
+                    <input type="date" id="dateInput" ng-model="vm.filters.date">
                 </div>
                 <div class="form-group">
                     <label for="keywordInput">Keyword</label>
-                    <input type="text" id="keywordInput" placeholder="e.g. concert">
+                    <input type="text" id="keywordInput" placeholder="e.g. concert"
+                           ng-model="vm.filters.keyword">
                 </div>
                 <div class="form-group full">
                     <div class="btn-row" style="margin-top:0;">
-                        <button type="submit" class="btn btn-primary">Search</button>
-                        <button type="button" id="clearBtn" class="btn btn-secondary">Clear Filters</button>
+                        <button type="submit" class="btn btn-primary"
+                                ng-disabled="vm.loading || searchForm.$invalid">Search</button>
+                        <button type="button" class="btn btn-secondary" ng-click="vm.clear()">Clear Filters</button>
                     </div>
                 </div>
             </div>
         </form>
 
-        <!-- Feedback / validation messages -->
-        <div id="searchAlert" class="alert alert-error hidden"></div>
-        <p id="resultCount" class="page-subtitle"></p>
+        <div class="alert alert-error" ng-if="vm.error">{{ vm.error }}</div>
+        <div class="alert alert-warning" ng-if="vm.validationError">{{ vm.validationError }}</div>
 
-        <div id="searchResult" class="card-grid"></div>
+        <p class="page-subtitle" ng-if="vm.searched && !vm.loading">
+            {{ vm.events.length }} event(s) found.
+        </p>
+
+        <div class="spinner" ng-if="vm.loading">Searching&hellip;</div>
+
+        <div class="card-grid" ng-if="!vm.loading && vm.events.length">
+            <event-card ng-repeat="evt in vm.events track by evt.event_id" event="evt"></event-card>
+        </div>
+
+        <div class="empty-state" ng-if="vm.searched && !vm.loading && !vm.events.length && !vm.error">
+            No matching events found. Try clearing the filters.
+        </div>
     </main>
 
-    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3</footer>
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (AngularJS)</footer>
 
-    <script src="js/api.js"></script>
-    <script>
-        /**
-         * Search page.
-         * 1. GET /api/categories  -> fill the category dropdown.
-         * 2. GET /api/events/search?categoryId=&location=&date=&keyword= -> results.
-         */
-
-        // Fill the category dropdown from the API.
-        async function loadCategories() {
-            try {
-                const result = await apiGet('/api/categories');
-                const select = document.getElementById('categorySelect');
-                result.data.forEach(cat => {
-                    const option = document.createElement('option');
-                    option.value = cat.category_id;
-                    option.textContent = cat.category_name;
-                    select.appendChild(option);
-                });
-            } catch (err) {
-                showAlert('Could not load categories: ' + err.message);
-            }
-        }
-
-        function showAlert(message) {
-            const box = document.getElementById('searchAlert');
-            box.textContent = message;
-            box.classList.toggle('hidden', !message);
-        }
-
-        // Client-side validation before calling the API.
-        function validateFilters(filters) {
-            if (filters.location && filters.location.trim().length > 0 && filters.location.trim().length < 2) {
-                return 'Please type at least 2 characters for the location.';
-            }
-            if (filters.date && Number.isNaN(Date.parse(filters.date))) {
-                return 'Please choose a valid date.';
-            }
-            if (filters.categoryId && Number.isNaN(Number(filters.categoryId))) {
-                return 'Please choose a valid category.';
-            }
-            return null;
-        }
-
-        async function runSearch(event) {
-            if (event) event.preventDefault();
-            const filters = {
-                categoryId: document.getElementById('categorySelect').value,
-                location: document.getElementById('locationInput').value,
-                date: document.getElementById('dateInput').value,
-                keyword: document.getElementById('keywordInput').value
-            };
-
-            const validationError = validateFilters(filters);
-            if (validationError) {
-                showAlert(validationError);
-                return;
-            }
-            showAlert('');
-
-            const params = new URLSearchParams();
-            Object.keys(filters).forEach(key => {
-                if (filters[key]) params.append(key, filters[key]);
-            });
-
-            const container = document.getElementById('searchResult');
-            const countLabel = document.getElementById('resultCount');
-            container.innerHTML = '<div class="empty-state">Searching&hellip;</div>';
-
-            try {
-                const result = await apiGet('/api/events/search?' + params.toString());
-                const events = result.data;
-                countLabel.textContent = `${events.length} event(s) found.`;
-
-                if (!events.length) {
-                    container.innerHTML = '<div class="empty-state">No matching events found. Try clearing the filters.</div>';
-                    return;
-                }
-
-                container.innerHTML = events.map(evt => `
-                    <div class="event-card">
-                        <h3>${escapeHtml(evt.event_title)}</h3>
-                        <p><span class="badge badge-category">${escapeHtml(evt.category_name)}</span></p>
-                        <p><strong>Date:</strong> ${formatDateTime(evt.event_date)}</p>
-                        <p><strong>Location:</strong> ${escapeHtml(evt.location)}</p>
-                        <p><strong>Tickets:</strong> ${Number(evt.ticket_price) > 0 ? formatCurrency(evt.ticket_price) + ' each' : 'Free entry'}</p>
-                        <div class="card-actions">
-                            <a class="btn btn-primary" href="event-detail.html?id=${evt.event_id}">View Details</a>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                countLabel.textContent = '';
-                container.innerHTML = '';
-                showAlert('Search failed: ' + err.message);
-            }
-        }
-
-        document.getElementById('searchForm').addEventListener('submit', runSearch);
-
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            document.getElementById('searchForm').reset();
-            document.getElementById('searchResult').innerHTML = '';
-            document.getElementById('resultCount').textContent = '';
-            showAlert('');
-        });
-
-        loadCategories();
-    </script>
+    <script src="js/vendor/angular.min.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,157 +1,117 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="charityApp">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Detail</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body ng-cloak ng-controller="EventDetailController as vm">
     <nav>
         <a class="brand" href="index.html">City Community Charity</a>
         <a class="nav-link" href="index.html">Home</a>
         <a class="nav-link" href="search.html">Search Events</a>
         <a class="nav-link nav-right" href="admin/index.html">Admin</a>
-        <span class="nav-badge">A3</span>
+        <span class="nav-badge">AngularJS</span>
     </nav>
 
-    <main id="detailContainer">
-        <div class="empty-state">Loading event details&hellip;</div>
-    </main>
+    <main>
+        <div class="spinner" ng-if="vm.loading">Loading event details&hellip;</div>
+        <div class="alert alert-error" ng-if="vm.error">{{ vm.error }}</div>
 
-    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3</footer>
+        <div class="card" ng-if="!vm.loading && vm.event">
+            <h1 class="page-title">{{ vm.event.event_title }}</h1>
+            <p class="page-subtitle">
+                <span class="badge badge-category">{{ vm.event.category_name }}</span>
+                <span ng-class="vm.event.event_status | statusClass">{{ vm.event.event_status }}</span>
+            </p>
 
-    <script src="js/api.js"></script>
-    <script>
-        /**
-         * Event details page (enhanced in A3).
-         *   - GET /api/events/:id          -> event details + registrations list
-         *   - GET /api/events/:id/weather  -> optional Open-Meteo forecast
-         * The "Register" button navigates to register.html passing the event id.
-         */
-        const eventId = getQueryParam('id');
+            <div class="info-grid">
+                <div class="info-item"><strong>Date</strong><p>{{ vm.event.event_date | auDate }}</p></div>
+                <div class="info-item"><strong>Location</strong><p>{{ vm.event.location }}</p></div>
+                <div class="info-item">
+                    <strong>Ticket Price</strong>
+                    <p ng-if="vm.event.ticket_price > 0">{{ vm.event.ticket_price | auCurrency }}</p>
+                    <p ng-if="vm.event.ticket_price <= 0">Free entry</p>
+                </div>
+                <div class="info-item"><strong>Organisation</strong><p>{{ vm.event.organisation_name }}</p></div>
+            </div>
 
-        async function loadDetail() {
-            const container = document.getElementById('detailContainer');
+            <div class="progress-section">
+                <div class="progress-info">
+                    <div><strong>Current Progress</strong><p>{{ vm.event.current_progress | auCurrency }}</p></div>
+                    <div><strong>Fundraising Goal</strong><p>{{ vm.event.fundraising_goal | auCurrency }}</p></div>
+                    <div><strong>Tickets Sold</strong><p>{{ vm.event.tickets_sold || 0 }}</p></div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" ng-style="{ width: vm.progressPercent + '%' }"></div>
+                </div>
+            </div>
 
-            if (!eventId || Number.isNaN(Number(eventId))) {
-                container.innerHTML = '<div class="alert alert-error">No valid event id was supplied.</div>';
-                return;
-            }
+            <h3>Description</h3>
+            <p class="preserve-lines">{{ vm.event.event_description }}</p>
 
-            try {
-                const result = await apiGet(`/api/events/${eventId}`);
-                const evt = result.data;
-                const goal = Number(evt.fundraising_goal) || 0;
-                const progressPercent = goal > 0
-                    ? Math.min((Number(evt.current_progress) / goal) * 100, 100)
-                    : 0;
+            <!-- Optional external API: Open-Meteo weather forecast -->
+            <div class="weather-box" ng-if="vm.weather">
+                <div class="weather-icon">{{ vm.weather.event_day.icon }}</div>
+                <div style="flex:1;">
+                    <div class="weather-desc">
+                        Weather forecast for {{ vm.weather.event_day.date | shortDate }} in {{ vm.weather.location }}
+                    </div>
+                    <div class="weather-temp">
+                        {{ vm.weather.event_day.temp_min }}&deg;C &ndash; {{ vm.weather.event_day.temp_max }}&deg;C
+                        &middot; {{ vm.weather.event_day.description }}
+                    </div>
+                    <div class="weather-meta">
+                        <span ng-if="vm.weather.event_day.precipitation_probability !== null">
+                            {{ vm.weather.event_day.precipitation_probability }}% chance of rain
+                        </span>
+                        <span ng-if="vm.weather.event_day.wind_max !== null">
+                            &middot; wind up to {{ vm.weather.event_day.wind_max }} km/h
+                        </span>
+                    </div>
+                    <div class="weather-advice">&#128161; {{ vm.weather.advice }}</div>
+                </div>
+            </div>
 
-                container.innerHTML = `
-                    <div class="card">
-                        <h1 class="page-title">${escapeHtml(evt.event_title)}</h1>
-                        <p class="page-subtitle">
-                            <span class="badge badge-category">${escapeHtml(evt.category_name)}</span>
-                            <span class="${statusBadgeClass(evt.event_status)}">${escapeHtml(evt.event_status)}</span>
-                        </p>
-
-                        <div class="info-grid">
-                            <div class="info-item"><strong>Date</strong><p>${formatDateTime(evt.event_date)}</p></div>
-                            <div class="info-item"><strong>Location</strong><p>${escapeHtml(evt.location)}</p></div>
-                            <div class="info-item"><strong>Ticket Price</strong><p>${Number(evt.ticket_price) > 0 ? formatCurrency(evt.ticket_price) : 'Free entry'}</p></div>
-                            <div class="info-item"><strong>Organisation</strong><p>${escapeHtml(evt.organisation_name)}</p></div>
-                        </div>
-
-                        <div class="progress-section">
-                            <div class="progress-info">
-                                <div><strong>Current Progress</strong><p>${formatCurrency(evt.current_progress)}</p></div>
-                                <div><strong>Fundraising Goal</strong><p>${formatCurrency(evt.fundraising_goal)}</p></div>
-                                <div><strong>Tickets Sold</strong><p>${evt.tickets_sold || 0}</p></div>
-                            </div>
-                            <div class="progress-bar"><div class="progress-fill" style="width:${progressPercent}%"></div></div>
-                        </div>
-
-                        <h3>Description</h3>
-                        <p style="white-space:pre-line;">${escapeHtml(evt.event_description)}</p>
-
-                        <div id="weatherBox"></div>
-
-                        <div class="btn-row">
-                            <a class="btn btn-primary btn-lg" href="register.html?id=${evt.event_id}">Register for this event</a>
-                            <a class="btn btn-outline" href="search.html">Back to search</a>
+            <!-- Multi-day outlook returned by the same endpoint -->
+            <div class="outlook" ng-if="vm.weather && vm.weather.outlook.length > 1">
+                <h3>Outlook for the following days</h3>
+                <div class="outlook-row">
+                    <div class="outlook-day" ng-repeat="day in vm.weather.outlook track by day.date">
+                        <div class="outlook-date">{{ day.date | shortDate }}</div>
+                        <div class="outlook-icon">{{ day.icon }}</div>
+                        <div class="outlook-temp">{{ day.temp_min }}&deg; / {{ day.temp_max }}&deg;</div>
+                        <div class="outlook-rain" ng-if="day.precipitation_probability !== null">
+                            {{ day.precipitation_probability }}% rain
                         </div>
                     </div>
-
-                    <section style="margin-top:2.5rem;">
-                        <h2>Registrations for this event</h2>
-                        ${renderRegistrations(evt.registrations)}
-                    </section>
-                `;
-
-                loadWeather();
-            } catch (err) {
-                container.innerHTML = `<div class="alert alert-error">Cannot load event details: ${escapeHtml(err.message)}</div>`;
-            }
-        }
-
-        /**
-         * Render the registration list. The API already sorts the records by
-         * registration_date DESC (latest purchase first).
-         */
-        function renderRegistrations(registrations) {
-            if (!registrations || registrations.length === 0) {
-                return '<div class="empty-state">No one has registered for this event yet. Be the first!</div>';
-            }
-            const rows = registrations.map(r => `
-                <tr>
-                    <td>#${r.registration_id}</td>
-                    <td>${escapeHtml(r.attendee_name)}</td>
-                    <td>${escapeHtml(r.attendee_email)}</td>
-                    <td>${escapeHtml(r.contact_phone)}</td>
-                    <td>${r.tickets_purchased}</td>
-                    <td>${formatCurrency(r.total_amount)}</td>
-                    <td>${formatDateTime(r.registration_date)}</td>
-                    <td>${escapeHtml(r.registration_status)}</td>
-                </tr>
-            `).join('');
-            return `
-                <div class="table-wrap">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th><th>Name</th><th>Email</th><th>Phone</th>
-                                <th>Tickets</th><th>Total</th><th>Registered</th><th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
                 </div>
-                <p class="form-hint">Sorted by the latest date the tickets were purchased.</p>
-            `;
-        }
+            </div>
 
-        /** Optional external API: Open-Meteo forecast for the event day. */
-        async function loadWeather() {
-            const box = document.getElementById('weatherBox');
-            try {
-                const result = await apiGet(`/api/events/${eventId}/weather`);
-                const w = result.data;
-                box.innerHTML = `
-                    <div class="weather-box">
-                        <div class="weather-icon">&#9925;</div>
-                        <div>
-                            <div class="weather-desc">Weather forecast for ${formatDateTime(w.date).split(',')[0]}</div>
-                            <div class="weather-temp">${w.temperature_min}&deg;C &ndash; ${w.temperature_max}&deg;C</div>
-                            <div>${escapeHtml(w.description)}${w.precipitation_probability !== null ? ` &middot; ${w.precipitation_probability}% chance of rain` : ''}</div>
-                        </div>
-                    </div>`;
-            } catch (err) {
-                // The weather API is optional, so a failure is shown as info only.
-                box.innerHTML = `<div class="alert alert-info">Weather forecast unavailable: ${escapeHtml(err.message)}</div>`;
-            }
-        }
+            <div class="alert alert-info" ng-if="vm.weatherMessage">{{ vm.weatherMessage }}</div>
 
-        loadDetail();
-    </script>
+            <div class="btn-row">
+                <a class="btn btn-primary btn-lg" ng-href="register.html?id={{ vm.event.event_id }}"
+                   ng-if="vm.event.event_status === 'Active'">Register for this event</a>
+                <a class="btn btn-outline" href="search.html">Back to search</a>
+            </div>
+        </div>
+
+        <section style="margin-top:2.5rem;" ng-if="!vm.loading && vm.event">
+            <h2>Registrations for this event</h2>
+            <!-- The API returns the registrations already sorted by the latest
+                 purchase date, newest first. -->
+            <registration-table registrations="vm.registrations"></registration-table>
+            <p class="form-hint" ng-if="vm.registrations.length">
+                Sorted by the latest date the tickets were purchased.
+            </p>
+        </section>
+    </main>
+
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (AngularJS)</footer>
+
+    <script src="js/vendor/angular.min.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
