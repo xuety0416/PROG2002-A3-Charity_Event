@@ -1,53 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="charityApp">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Event | Admin</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
-<body>
+<body ng-cloak ng-controller="AdminNewEventController as vm">
     <nav>
         <a class="brand" href="index.html">Charity Admin</a>
         <a class="nav-link" href="index.html">Dashboard</a>
         <a class="nav-link active" href="new.html">New Event</a>
         <a class="nav-link nav-right" href="../index.html">Client Site</a>
-        <span class="nav-badge">Admin</span>
+        <span class="nav-badge">AngularJS</span>
     </nav>
 
     <main>
         <h1 class="page-title">Create a new charity event</h1>
-        <p class="page-subtitle">Fields marked with <span style="color:var(--accent)">*</span> are required.</p>
+        <p class="page-subtitle">Fields marked with <span class="req">*</span> are required.</p>
 
-        <div id="pageAlert" class="alert hidden"></div>
+        <div class="alert alert-error" ng-if="vm.error">{{ vm.error }}</div>
 
-        <form id="eventForm" class="card">
+        <form name="eventForm" class="card" ng-submit="vm.save(eventForm)" novalidate>
             <fieldset>
                 <legend>Event details</legend>
                 <div class="form-grid">
                     <div class="form-group full">
                         <label for="eventTitle">Event title <span class="req">*</span></label>
-                        <input type="text" id="eventTitle" required>
+                        <input type="text" id="eventTitle" name="eventTitle" ng-model="vm.event.event_title" required>
+                        <span class="field-error"
+                              ng-show="eventForm.eventTitle.$touched && eventForm.eventTitle.$invalid">
+                            The event title is required.
+                        </span>
                     </div>
                     <div class="form-group">
                         <label for="organisationId">Organisation <span class="req">*</span></label>
-                        <select id="organisationId" required></select>
+                        <select id="organisationId" name="organisationId" ng-model="vm.event.organisation_id" required
+                                ng-options="o.organisation_id as o.organisation_name for o in vm.organisations"></select>
                     </div>
                     <div class="form-group">
                         <label for="categoryId">Category <span class="req">*</span></label>
-                        <select id="categoryId" required></select>
+                        <select id="categoryId" name="categoryId" ng-model="vm.event.category_id" required
+                                ng-options="c.category_id as c.category_name for c in vm.categories"></select>
                     </div>
                     <div class="form-group">
                         <label for="eventDate">Event date &amp; time <span class="req">*</span></label>
-                        <input type="datetime-local" id="eventDate" required>
+                        <input type="datetime-local" id="eventDate" name="eventDate"
+                               ng-model="vm.event.event_date" required>
+                        <span class="field-error"
+                              ng-show="eventForm.eventDate.$touched && eventForm.eventDate.$invalid">
+                            The event date and time is required.
+                        </span>
                     </div>
                     <div class="form-group">
                         <label for="location">Location <span class="req">*</span></label>
-                        <input type="text" id="location" required>
+                        <input type="text" id="location" name="location" ng-model="vm.event.location" required>
+                        <span class="field-error"
+                              ng-show="eventForm.location.$touched && eventForm.location.$invalid">
+                            The location is required.
+                        </span>
                     </div>
                     <div class="form-group full">
                         <label for="eventDescription">Description</label>
-                        <textarea id="eventDescription" placeholder="Describe the event for the client website&hellip;"></textarea>
+                        <textarea id="eventDescription" ng-model="vm.event.event_description"
+                                  placeholder="Describe the event for the client website&hellip;"></textarea>
                     </div>
                 </div>
             </fieldset>
@@ -57,15 +73,15 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="ticketPrice">Ticket price ($)</label>
-                        <input type="number" id="ticketPrice" min="0" step="0.01" value="0">
+                        <input type="number" id="ticketPrice" ng-model="vm.event.ticket_price" min="0" step="0.01">
                     </div>
                     <div class="form-group">
                         <label for="fundraisingGoal">Fundraising goal ($)</label>
-                        <input type="number" id="fundraisingGoal" min="0" step="0.01" value="0">
+                        <input type="number" id="fundraisingGoal" ng-model="vm.event.fundraising_goal" min="0" step="0.01">
                     </div>
                     <div class="form-group">
                         <label for="currentProgress">Current progress ($)</label>
-                        <input type="number" id="currentProgress" min="0" step="0.01" value="0">
+                        <input type="number" id="currentProgress" ng-model="vm.event.current_progress" min="0" step="0.01">
                     </div>
                 </div>
             </fieldset>
@@ -73,111 +89,41 @@
             <fieldset>
                 <legend>Location coordinates &amp; status</legend>
                 <p class="form-hint" style="margin-bottom:0.8rem;">
-                    Latitude / longitude are optional but enable the weather forecast on the client event page.
+                    Latitude / longitude are optional but enable the Open-Meteo weather forecast on the event page.
                 </p>
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="latitude">Latitude</label>
-                        <input type="number" id="latitude" step="0.000001" placeholder="e.g. -33.873100">
+                        <input type="number" id="latitude" ng-model="vm.event.latitude" step="0.000001"
+                               placeholder="e.g. -33.873100">
                     </div>
                     <div class="form-group">
                         <label for="longitude">Longitude</label>
-                        <input type="number" id="longitude" step="0.000001" placeholder="e.g. 151.206300">
+                        <input type="number" id="longitude" ng-model="vm.event.longitude" step="0.000001"
+                               placeholder="e.g. 151.206300">
                     </div>
                     <div class="form-group">
                         <label for="isSuspended">Suspended</label>
                         <label style="font-weight:400;">
-                            <input type="checkbox" id="isSuspended" style="width:auto;"> Tick to suspend this event
+                            <input type="checkbox" id="isSuspended" ng-model="vm.event.is_suspended" style="width:auto;">
+                            Tick to suspend this event
                         </label>
                     </div>
                 </div>
             </fieldset>
 
             <div class="btn-row">
-                <button type="submit" id="submitBtn" class="btn btn-primary">Save event</button>
+                <button type="submit" class="btn btn-primary" ng-disabled="vm.saving || eventForm.$invalid">
+                    {{ vm.saving ? 'Saving…' : 'Save event' }}
+                </button>
                 <a class="btn btn-secondary" href="index.html">Cancel</a>
             </div>
         </form>
     </main>
 
-    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (Admin)</footer>
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (Admin, AngularJS)</footer>
 
-    <script src="../js/api.js"></script>
-    <script>
-        /**
-         * Admin "New" feature.
-         * Loads the organisation / category dropdowns from the API, validates the
-         * form and POSTs the new event to POST /api/events.
-         */
-
-        function showAlert(message, type = 'error') {
-            const box = document.getElementById('pageAlert');
-            box.className = 'alert alert-' + type;
-            box.textContent = message;
-            box.classList.toggle('hidden', !message);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        async function loadDropdowns() {
-            const [orgs, cats] = await Promise.all([apiGet('/api/organisations'), apiGet('/api/categories')]);
-            document.getElementById('organisationId').innerHTML = orgs.data
-                .map(o => `<option value="${o.organisation_id}">${escapeHtml(o.organisation_name)}</option>`).join('');
-            document.getElementById('categoryId').innerHTML = cats.data
-                .map(c => `<option value="${c.category_id}">${escapeHtml(c.category_name)}</option>`).join('');
-        }
-
-        function collectForm() {
-            return {
-                organisation_id: Number(document.getElementById('organisationId').value),
-                category_id: Number(document.getElementById('categoryId').value),
-                event_title: document.getElementById('eventTitle').value.trim(),
-                event_description: document.getElementById('eventDescription').value.trim(),
-                event_date: document.getElementById('eventDate').value,
-                location: document.getElementById('location').value.trim(),
-                latitude: document.getElementById('latitude').value || null,
-                longitude: document.getElementById('longitude').value || null,
-                ticket_price: Number(document.getElementById('ticketPrice').value || 0),
-                fundraising_goal: Number(document.getElementById('fundraisingGoal').value || 0),
-                current_progress: Number(document.getElementById('currentProgress').value || 0),
-                is_suspended: document.getElementById('isSuspended').checked
-            };
-        }
-
-        // Required-field validation before sending the request.
-        function validate(data) {
-            if (!data.event_title) return 'The event title is required.';
-            if (!data.event_date) return 'The event date and time is required.';
-            if (!data.location) return 'The location is required.';
-            if (Number.isNaN(Date.parse(data.event_date))) return 'The event date is not valid.';
-            if (!data.category_id) return 'Please choose a category.';
-            if (!data.organisation_id) return 'Please choose an organisation.';
-            if (data.ticket_price < 0) return 'The ticket price cannot be negative.';
-            return null;
-        }
-
-        document.getElementById('eventForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showAlert('');
-
-            const data = collectForm();
-            const error = validate(data);
-            if (error) { showAlert(error); return; }
-
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
-            btn.textContent = 'Saving…';
-            try {
-                await apiPost('/api/events', data);
-                showAlert('Event created successfully. Redirecting to the dashboard…', 'success');
-                setTimeout(() => { window.location.href = 'index.html'; }, 1500);
-            } catch (err) {
-                showAlert('Could not save the event: ' + err.message);
-                btn.disabled = false;
-                btn.textContent = 'Save event';
-            }
-        });
-
-        loadDropdowns().catch(err => showAlert('Could not load form options: ' + err.message));
-    </script>
+    <script src="../js/vendor/angular.min.js"></script>
+    <script src="../js/app.js"></script>
 </body>
 </html>

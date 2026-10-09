@@ -1,140 +1,95 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" ng-app="charityApp">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard | Charity Events</title>
     <link rel="stylesheet" href="../css/style.css">
 </head>
-<body>
+<body ng-cloak ng-controller="AdminDashboardController as vm">
     <!-- Admin navigation - present on every admin page -->
     <nav>
         <a class="brand" href="index.html">Charity Admin</a>
         <a class="nav-link active" href="index.html">Dashboard</a>
         <a class="nav-link" href="new.html">New Event</a>
         <a class="nav-link nav-right" href="../index.html">Client Site</a>
-        <span class="nav-badge">Admin</span>
+        <span class="nav-badge">AngularJS</span>
     </nav>
 
     <main>
         <h1 class="page-title">Event Management Dashboard</h1>
         <p class="page-subtitle">All events regardless of status (Active, Past, Suspended).</p>
 
-        <div id="pageAlert" class="alert hidden"></div>
+        <div class="alert alert-success" ng-if="vm.message">{{ vm.message }}</div>
+        <div class="alert alert-error" ng-if="vm.error">{{ vm.error }}</div>
 
-        <!-- Summary statistics -->
-        <div class="stats-row" id="statsRow"></div>
+        <!-- Summary statistics computed with AngularJS from the loaded list -->
+        <div class="stats-row" ng-if="!vm.loading">
+            <div class="stat-card">
+                <div class="stat-value">{{ vm.stats().total }}</div>
+                <div class="stat-label">Total events</div>
+            </div>
+            <div class="stat-card active">
+                <div class="stat-value">{{ vm.stats().active }}</div>
+                <div class="stat-label">Active</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ vm.stats().past }}</div>
+                <div class="stat-label">Past</div>
+            </div>
+            <div class="stat-card suspended">
+                <div class="stat-value">{{ vm.stats().suspended }}</div>
+                <div class="stat-label">Suspended</div>
+            </div>
+        </div>
 
-        <!-- Full list of events -->
         <section>
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
-                <h2 style="margin:0;">All charity events</h2>
+            <div class="section-head">
+                <h2>All charity events</h2>
                 <a class="btn btn-primary" href="new.html">+ New Event</a>
             </div>
-            <div id="eventTable"><div class="empty-state">Loading events&hellip;</div></div>
+
+            <div class="spinner" ng-if="vm.loading">Loading events&hellip;</div>
+
+            <div class="table-wrap" ng-if="!vm.loading && vm.events.length">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Title</th><th>Category</th><th>Date</th><th>Location</th>
+                            <th>Price</th><th>Status</th><th>Registrations</th><th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="evt in vm.events track by evt.event_id">
+                            <td>{{ evt.event_id }}</td>
+                            <td>{{ evt.event_title }}</td>
+                            <td>{{ evt.category_name }}</td>
+                            <td>{{ evt.event_date | auDate }}</td>
+                            <td>{{ evt.location }}</td>
+                            <td>
+                                <span ng-if="evt.ticket_price > 0">{{ evt.ticket_price | auCurrency }}</span>
+                                <span ng-if="evt.ticket_price <= 0">Free</span>
+                            </td>
+                            <td><span ng-class="evt.event_status | statusClass">{{ evt.event_status }}</span></td>
+                            <td>{{ evt.registration_count }} reg / {{ evt.tickets_sold }} tickets</td>
+                            <td class="actions">
+                                <a class="btn btn-outline" ng-href="edit.html?id={{ evt.event_id }}">Edit</a>
+                                <button class="btn btn-danger" ng-click="vm.remove(evt)">Delete</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="empty-state" ng-if="!vm.loading && !vm.events.length">
+                No events found. Create one with the "New Event" button.
+            </div>
         </section>
     </main>
 
-    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (Admin)</footer>
+    <footer>&copy; 2026 City Community Charity &mdash; PROG2002 Assessment 3 (Admin, AngularJS)</footer>
 
-    <script src="../js/api.js"></script>
-    <script>
-        /**
-         * Admin dashboard - "List" and "Delete" features.
-         *   GET    /api/admin/events      -> every event + registration counts
-         *   DELETE /api/events/:id        -> delete (blocked when registrations exist)
-         */
-
-        function showAlert(message, type = 'error') {
-            const box = document.getElementById('pageAlert');
-            box.className = 'alert alert-' + type;
-            box.textContent = message;
-            box.classList.toggle('hidden', !message);
-        }
-
-        function renderStats(events) {
-            const counts = {
-                total: events.length,
-                active: events.filter(e => e.event_status === 'Active').length,
-                past: events.filter(e => e.event_status === 'Past').length,
-                suspended: events.filter(e => e.event_status === 'Suspended').length
-            };
-            document.getElementById('statsRow').innerHTML = `
-                <div class="stat-card"><div class="stat-value">${counts.total}</div><div class="stat-label">Total events</div></div>
-                <div class="stat-card active"><div class="stat-value">${counts.active}</div><div class="stat-label">Active</div></div>
-                <div class="stat-card"><div class="stat-value">${counts.past}</div><div class="stat-label">Past</div></div>
-                <div class="stat-card suspended"><div class="stat-value">${counts.suspended}</div><div class="stat-label">Suspended</div></div>
-            `;
-        }
-
-        function renderTable(events) {
-            const container = document.getElementById('eventTable');
-            if (!events.length) {
-                container.innerHTML = '<div class="empty-state">No events found. Create one with the "New Event" button.</div>';
-                return;
-            }
-            const rows = events.map(evt => `
-                <tr>
-                    <td>${evt.event_id}</td>
-                    <td>${escapeHtml(evt.event_title)}</td>
-                    <td>${escapeHtml(evt.category_name)}</td>
-                    <td>${formatDateTime(evt.event_date)}</td>
-                    <td>${escapeHtml(evt.location)}</td>
-                    <td>${Number(evt.ticket_price) > 0 ? formatCurrency(evt.ticket_price) : 'Free'}</td>
-                    <td><span class="${statusBadgeClass(evt.event_status)}">${escapeHtml(evt.event_status)}</span></td>
-                    <td>${evt.registration_count} reg / ${evt.tickets_sold} tickets</td>
-                    <td class="actions">
-                        <a class="btn btn-outline" href="edit.html?id=${evt.event_id}">Edit</a>
-                        <button class="btn btn-danger" data-delete="${evt.event_id}" data-title="${escapeHtml(evt.event_title)}">Delete</button>
-                    </td>
-                </tr>
-            `).join('');
-
-            container.innerHTML = `
-                <div class="table-wrap">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th><th>Title</th><th>Category</th><th>Date</th><th>Location</th>
-                                <th>Price</th><th>Status</th><th>Registrations</th><th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                </div>`;
-
-            // Attach a delete handler to every delete button.
-            container.querySelectorAll('[data-delete]').forEach(btn => {
-                btn.addEventListener('click', () => deleteEvent(btn.dataset.delete, btn.dataset.title));
-            });
-        }
-
-        async function loadEvents() {
-            try {
-                const result = await apiGet('/api/admin/events');
-                renderStats(result.data);
-                renderTable(result.data);
-            } catch (err) {
-                document.getElementById('eventTable').innerHTML =
-                    `<div class="alert alert-error">Cannot load events: ${escapeHtml(err.message)}</div>`;
-            }
-        }
-
-        async function deleteEvent(eventId, title) {
-            if (!confirm(`Delete the event "${title}"?\n\nThis cannot be undone. Events that already have registrations cannot be deleted.`)) {
-                return;
-            }
-            try {
-                const result = await apiDelete(`/api/events/${eventId}`);
-                showAlert(result.message || 'Event deleted.', 'success');
-                loadEvents();
-            } catch (err) {
-                // The API returns a clear message when a deletion is blocked.
-                showAlert('Deletion blocked: ' + err.message, 'error');
-            }
-        }
-
-        loadEvents();
-    </script>
+    <script src="../js/vendor/angular.min.js"></script>
+    <script src="../js/app.js"></script>
 </body>
 </html>
