@@ -1,1 +1,5 @@
 /node_modules
+# Do not commit local environment files
+.env
+# Do not commit packaged submissions / archives
+*.zip

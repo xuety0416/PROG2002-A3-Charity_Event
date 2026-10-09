@@ -1,14 +1,23 @@
 {
   "name": "charity_event",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "3.0.0",
+  "description": "PROG2002 Web Development II - Assessment 3: Charity Event client-side and admin-side dynamic website (Node.js + Express + MySQL).",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "charity",
+    "express",
+    "mysql",
+    "rest-api"
+  ],
+  "author": "Tianyu Xue (xuety0416), Liwei Jin (M1lkteaLiweiJin)",
   "license": "ISC",
-  "description": "",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
